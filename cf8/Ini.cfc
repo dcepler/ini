@@ -3,10 +3,11 @@
 
 	<cffunction name="init" access="public" returntype="any">
 		<cfargument name="filepath" required="true" type="string" />
+		<cfargument name="removeDottedKeys" default="false" type="boolean" />
 
 		<cfscript>
 		variables.extendsKey = ";extends"; // safe because keys starting with a semi-colon (;) are treated as comments
-		variables.sections = processSections(parseExtends(loadSections(arguments.filePath)));
+		variables.sections = processSections(parseExtends(loadSections(arguments.filePath)), arguments.removeDottedKeys);
 
 		return this;
 		</cfscript>
@@ -98,6 +99,7 @@
 
 	<cffunction name="processSections" access="private" returntype="struct">
 		<cfargument name="sections" required="true" type="struct" />
+		<cfargument name="removeDottedKeys" required="true" type="boolean" />
 
 		<cfscript>
 		var data = {};
@@ -113,7 +115,7 @@
 
 		// flatten each section based on inheritance
 		for (key in data) {
-			data[key] = flattenSection(data, key);
+			data[key] = flattenSection(data, key, arguments.removeDottedKeys);
 		}
 
 		// remove ;extends
@@ -223,6 +225,7 @@
 	<cffunction name="flattenSection" access="private" returntype="struct">
 		<cfargument name="config" required="true" type="struct" />
 		<cfargument name="id" required="true" type="string" />
+		<cfargument name="removeDottedKeys" required="true" type="boolean" />
 
 		<cfscript>
 		var section = "";
@@ -243,12 +246,19 @@
 
 			// recursively flatten each parent section
 			for (i = 1; i <= arrayLen(extends); i++) {
-				structAppend(section, flattenSection(arguments.config, extends[i]), false);
+				structAppend(section, flattenSection(arguments.config, extends[i], arguments.removeDottedKeys), false);
 			}
 
 
 		}
 
+		if (arguments.removeDottedKeys) {
+			// remove dotted structure keys
+			for (key in section) {
+				if (Find(".", key))
+					structDelete(section, key);
+			}
+		}
 
 		return section;
 		</cfscript>

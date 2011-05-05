@@ -3,10 +3,10 @@
  */
 component {
 
-	public any function init(required string filePath) {
+	public any function init(required string filePath, boolean removeDottedKeys=false) {
 
 		variables.extendsKey = ";extends"; // safe because keys starting with a semi-colon (;) are treated as comments
-		variables.sections = processSections(parseExtends(loadSections(arguments.filePath)));
+		variables.sections = processSections(parseExtends(loadSections(arguments.filePath)), arguments.removeDottedKeys);
 
 		return this;
 
@@ -68,7 +68,7 @@ component {
 
 	}
 
-	private struct function processSections(required struct sections) {
+	private struct function processSections(required struct sections, required boolean removeDottedKeys) {
 
 		var data = {};
 		var key = "";
@@ -83,7 +83,7 @@ component {
 
 		// flatten each section based on inheritance
 		for (key in data) {
-			data[key] = flattenSection(data, key);
+			data[key] = flattenSection(data, key, arguments.removeDottedKeys);
 		}
 
 		// remove ;extends
@@ -178,7 +178,7 @@ component {
 
     }
 
-	private struct function flattenSection(required struct config, required string id) {
+	private struct function flattenSection(required struct config, required string id, required boolean removeDottedKeys) {
 
 		if (!structKeyExists(arguments.config, arguments.id)) {
 			throw("Invalid section: #arguments.id#");
@@ -194,10 +194,18 @@ component {
 
 			// recursively flatten each parent section
 			for (i = 1; i <= arrayLen(extends); i++) {
-				structAppend(section, flattenSection(arguments.config, extends[i]), false);
+				structAppend(section, flattenSection(arguments.config, extends[i], arguments.removeDottedKeys), false);
 			}
 
 
+		}
+
+		if (arguments.removeDottedKeys) {
+			// remove dotted structure keys
+			for (key in section) {
+				if (Find(".", key))
+					structDelete(section, key);
+			}
 		}
 
 		return section;
